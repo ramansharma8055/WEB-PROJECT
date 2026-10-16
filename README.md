@@ -2,10 +2,14 @@
 
 A warm, editorial storefront for considered everyday objects. Sunday Supply is built with plain HTML, CSS, and JavaScript—no framework, package installation, or build step required.
 
+## Open the website
+
+- [Open `index.html`](index.html) in your browser.
+- On Windows, double-click [`open-website.bat`](open-website.bat) to launch the site in your default browser.
+
 ## Run locally
 
-1. Open `index.html` in a browser, or serve this folder with any static file server.
-2. To use the optional VS Code Live Server extension, right-click `index.html` and choose **Open with Live Server**.
+To serve the site locally, use any static file server. In VS Code, the optional Live Server extension can do this: right-click `index.html` and choose **Open with Live Server**.
 
 ## Features
 
