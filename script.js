@@ -105,6 +105,7 @@ function renderProducts() {
     </article>
   `).join("");
   emptyState.hidden = visibleProducts.length > 0;
+  observeReveals(productGrid.querySelectorAll(".product-card"));
 }
 
 function cartQuantity() {
@@ -143,6 +144,151 @@ function showToast(message) {
   toast.classList.add("is-visible");
   window.clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => toast.classList.remove("is-visible"), 2300);
+}
+
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const revealObserver = "IntersectionObserver" in window && !reducedMotion.matches
+  ? new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-revealed");
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: 0.14 })
+  : null;
+
+function observeReveals(elements) {
+  elements.forEach((element) => {
+    if (!revealObserver) {
+      element.classList.add("is-revealed");
+      return;
+    }
+    element.classList.add("fx-reveal");
+    revealObserver.observe(element);
+  });
+}
+
+function setupVisualEffects() {
+  const canvas = document.querySelector("#vfx-canvas");
+  const context = canvas.getContext("2d");
+  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
+  if (!context || reducedMotion.matches || !canHover.matches) return;
+
+  const particles = [];
+  const colors = ["#ef805d", "#e7bd65", "#82a994", "#db91a1", "#a89be1"];
+  let frame = 0;
+  let width = 0;
+  let height = 0;
+  let lastTrail = null;
+
+  function resizeCanvas() {
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.round(width * pixelRatio);
+    canvas.height = Math.round(height * pixelRatio);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  }
+
+  function addParticle(x, y, burst = false) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = burst ? 1.1 + Math.random() * 3.2 : 0.25 + Math.random() * 1.15;
+    particles.push({
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - (burst ? 0 : 0.35),
+      size: burst ? 1.8 + Math.random() * 3.2 : 1.2 + Math.random() * 2.4,
+      life: 1,
+      decay: burst ? 0.018 + Math.random() * 0.02 : 0.024 + Math.random() * 0.025,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    });
+    if (particles.length > 96) particles.splice(0, particles.length - 96);
+  }
+
+  function draw() {
+    context.clearRect(0, 0, width, height);
+    context.globalCompositeOperation = "lighter";
+    for (let index = particles.length - 1; index >= 0; index -= 1) {
+      const particle = particles[index];
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.vx *= 0.985;
+      particle.vy = particle.vy * 0.985 + 0.012;
+      particle.life -= particle.decay;
+      if (particle.life <= 0) {
+        particles.splice(index, 1);
+        continue;
+      }
+      context.globalAlpha = particle.life * 0.8;
+      context.fillStyle = particle.color;
+      context.shadowColor = particle.color;
+      context.shadowBlur = 13;
+      context.beginPath();
+      context.arc(particle.x, particle.y, particle.size * particle.life, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = "source-over";
+    context.shadowBlur = 0;
+    if (particles.length) {
+      frame = window.requestAnimationFrame(draw);
+    } else {
+      frame = 0;
+    }
+  }
+
+  function wakeAnimation() {
+    if (!frame) frame = window.requestAnimationFrame(draw);
+  }
+
+  window.addEventListener("resize", resizeCanvas, { passive: true });
+  window.addEventListener("pointermove", (event) => {
+    if (event.pointerType !== "mouse") return;
+    const previous = lastTrail;
+    lastTrail = { x: event.clientX, y: event.clientY };
+    if (previous && Math.hypot(event.clientX - previous.x, event.clientY - previous.y) < 8) return;
+    addParticle(event.clientX, event.clientY);
+    if (Math.random() > 0.55) addParticle(event.clientX, event.clientY);
+    wakeAnimation();
+  }, { passive: true });
+  window.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "mouse") return;
+    for (let index = 0; index < 14; index += 1) addParticle(event.clientX, event.clientY, true);
+    wakeAnimation();
+  }, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && frame) {
+      window.cancelAnimationFrame(frame);
+      frame = 0;
+      particles.length = 0;
+      context.clearRect(0, 0, width, height);
+    }
+  });
+  resizeCanvas();
+}
+
+function setupCardTilt() {
+  const canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
+  if (!canHover.matches || reducedMotion.matches) return;
+  productGrid.addEventListener("pointermove", (event) => {
+    const card = event.target.closest(".product-card");
+    if (!card) return;
+    const bounds = card.getBoundingClientRect();
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+    card.style.setProperty("--tilt-x", `${-y * 5}deg`);
+    card.style.setProperty("--tilt-y", `${x * 5}deg`);
+  }, { passive: true });
+  productGrid.addEventListener("pointerout", (event) => {
+    const card = event.target.closest(".product-card");
+    if (card && !card.contains(event.relatedTarget)) {
+      card.style.setProperty("--tilt-x", "0deg");
+      card.style.setProperty("--tilt-y", "0deg");
+    }
+  }, { passive: true });
 }
 
 function setCartOpen(isOpen) {
@@ -257,3 +403,6 @@ document.addEventListener("keydown", (event) => {
 
 renderProducts();
 renderCart();
+observeReveals(document.querySelectorAll(".section-heading, .story-image, .story-copy, .newsletter-section"));
+setupVisualEffects();
+setupCardTilt();
