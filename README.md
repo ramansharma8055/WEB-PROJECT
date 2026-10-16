@@ -10,7 +10,7 @@ A warm, editorial storefront for considered everyday objects. Sunday Supply is b
 ## Features
 
 - Responsive storefront with a mobile navigation menu.
-- Animated hero, scrolling message ribbon, and staggered product cards, with reduced-motion support.
+- Animated hero, scrolling message ribbon, glowing pointer trails and click bursts, scroll reveals, and subtle product-card tilt, with reduced-motion support.
 - Eight sample products with category filters and live search.
 - Interactive favorites and a shopping bag with quantity controls and subtotal.
 - Newsletter sign-up interaction for the front-end demo.
